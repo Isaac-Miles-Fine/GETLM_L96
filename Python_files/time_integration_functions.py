@@ -64,14 +64,15 @@ def CN_L96(x_in, model_parameters, iter_count=5, tol=1e-6):
             x_next += delta
             
     # Return it in the original shape if necessary (e.g., [N, 1])
-    return [x_next.detach().view(-1, 1), x_current]
+    return [x_next.detach().view(-1, 1), x_current.detach().view(-1, 1)]
 
 
 # The final function is Leapfrog
-def robert_asselin_filter(x_prev, x_curr, x_next, gamma=0.1):
-    return x_curr + gamma * (x_prev - 2 * x_curr + x_next)
+
 
 def LF_L96(x_in, model_parameters):
+    def robert_asselin_filter(x_prev, x_curr, x_next, gamma=0.1):
+        return x_curr + gamma * (x_prev - 2 * x_curr + x_next)
     x_current = x_in[0]
     x_past = x_in[1]
     (N, dx, dt, alpha, beta, F_96) = model_parameters
@@ -87,14 +88,14 @@ def LF_L96(x_in, model_parameters):
     trend = f(x_current)
     X_next = x_past + dt * trend *2
     X_current = robert_asselin_filter(x_past, x_current, X_next, gamma=0.1)
-    return (X_next, X_current)
+    return [X_next, X_current]
 
 
 #  This is a function that allows us to run any of the models with out changing the outputs
 def run_model(x_in, model, model_parameters):
     x_current = x_in[0]
     x_past = x_in[1]
-    if model == LF_L96 and x_past == False:
+    if model == LF_L96 and x_past is False:
         x_next = rk4_L96(x_in, model_parameters)
     else:
         x_next = model(x_in, model_parameters)
