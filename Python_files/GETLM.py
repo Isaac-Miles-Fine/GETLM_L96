@@ -88,6 +88,7 @@ def little_GETLM(Chi_i, Xi_i, X_i, k):
     # Construct matrix
     Pi_half = torch.cat((Chi_i,-Xi_i, -X_i), dim=0)
     Pi = Pi_half @ Pi_half.T
+    # print(Pi)
 
     # print(Pi_half.shape)
 
@@ -213,10 +214,10 @@ def GETLM_ensemble_generator(x_current, x_past, ensemble_size, standard_deviatio
         # print(state)
         # print(state[0])
 
-        state_pert = TST.run_model(state_pert, model, model_parameters)
+        # state_pert = TST.run_model(state_pert, model, model_parameters)
         state_pert = TST.run_model(state_pert, model, model_parameters)
 
-        state = TST.run_model(state, model, model_parameters)
+        # state = TST.run_model(state, model, model_parameters)
         
         state = TST.run_model(state, model, model_parameters)
         # print(state_pert[0].shape) 
@@ -237,92 +238,92 @@ def GETLM_ensemble_generator(x_current, x_past, ensemble_size, standard_deviatio
     
 
 
-# Gemini Version
-def GETLM_ensemble_generator_mult(x_current, x_past, ensemble_size, standard_deviation, model, model_parameters, number_of_steps = 1):
-    (N, dx, dt, alpha, beta, F_L96) = model_parameters
-    Ensembles = []
+# # Gemini Version
+# def GETLM_ensemble_generator_mult(x_current, x_past, ensemble_size, standard_deviation, model, model_parameters, number_of_steps = 1):
+#     (N, dx, dt, alpha, beta, F_L96) = model_parameters
+#     Ensembles = []
     
-    # Ensure initial test perturbations are distinct 2D shapes [N, 1]
-    test = [torch.rand((N, 1)) * standard_deviation, torch.zeros((N, 1))]
-    test_values = [test]
+#     # Ensure initial test perturbations are distinct 2D shapes [N, 1]
+#     test = [torch.rand((N, 1)) * standard_deviation, torch.zeros((N, 1))]
+#     test_values = [test]
     
-    # 1. FIX: Use .repeat(1, ensemble_size) instead of (N, ensemble_size)
-    # This correctly creates an [N, ensemble_size] matrix if x_current is [N, 1]
-    x_current_matrix = x_current.repeat(1, ensemble_size)
-    x_past_matrix = x_past.repeat(1, ensemble_size)
+#     # 1. FIX: Use .repeat(1, ensemble_size) instead of (N, ensemble_size)
+#     # This correctly creates an [N, ensemble_size] matrix if x_current is [N, 1]
+#     x_current_matrix = x_current.repeat(1, ensemble_size)
+#     x_past_matrix = x_past.repeat(1, ensemble_size)
 
-    # Initialize perturbed states for the ensemble
-    X = x_current_matrix + torch.randn(N, ensemble_size) * standard_deviation
-    X_past = x_past_matrix.clone()
+#     # Initialize perturbed states for the ensemble
+#     X = x_current_matrix + torch.randn(N, ensemble_size) * standard_deviation
+#     X_past = x_past_matrix.clone()
     
-    # 2. FIX: Track a single unperturbed control trajectory across time steps
-    control_state = [x_current.clone(), x_past.clone()]
-    for i in range(number_of_steps):
-        # Allocate fresh zero matrices per timestep to prevent reference overwriting
-        Xi = torch.zeros(N, ensemble_size)
-        Chi = torch.zeros(N, ensemble_size)
+#     # 2. FIX: Track a single unperturbed control trajectory across time steps
+#     control_state = [x_current.clone(), x_past.clone()]
+#     for i in range(number_of_steps):
+#         # Allocate fresh zero matrices per timestep to prevent reference overwriting
+#         Xi = torch.zeros(N, ensemble_size)
+#         Chi = torch.zeros(N, ensemble_size)
         
-        # --- PART A: EVOLVE CONTROL & TEST TRAJECTORIES (Exactly 1 Step) ---
-        # 1. Align test state with current control state
-        state_test = [control_state[0] + test_values[-1][0], control_state[1] + test_values[-1][1]]
+#         # --- PART A: EVOLVE CONTROL & TEST TRAJECTORIES (Exactly 1 Step) ---
+#         # 1. Align test state with current control state
+#         state_test = [control_state[0] + test_values[-1][0], control_state[1] + test_values[-1][1]]
         
-        # 2. Advance both control and test states by exactly ONE step
-        control_state = TST.run_model(control_state, model, model_parameters)
-        state_test = TST.run_model(state_test, model, model_parameters)
+#         # 2. Advance both control and test states by exactly ONE step
+#         control_state = TST.run_model(control_state, model, model_parameters)
+#         state_test = TST.run_model(state_test, model, model_parameters)
         
-        # 3. Compute the linear perturbation growth for this single step
-        test = [state_test[0] - control_state[0], state_test[1] - control_state[1]]
-        test_values.append(test)
+#         # 3. Compute the linear perturbation growth for this single step
+#         test = [state_test[0] - control_state[0], state_test[1] - control_state[1]]
+#         test_values.append(test)
         
-        # --- PART B: EVOLVE ENSEMBLE MEMBERS (Exactly 1 Step) ---
-        # Track the absolute states for the next iteration step
-        X_next = torch.zeros(N, ensemble_size)
+#         # --- PART B: EVOLVE ENSEMBLE MEMBERS (Exactly 1 Step) ---
+#         # Track the absolute states for the next iteration step
+#         X_next = torch.zeros(N, ensemble_size)
         
-        for member in range(ensemble_size):
-            state_pert = [X[:, member].unsqueeze(1), X_past[:, member].unsqueeze(1)]
+#         for member in range(ensemble_size):
+#             state_pert = [X[:, member].unsqueeze(1), X_past[:, member].unsqueeze(1)]
 
-            # Advance the absolute state of the ensemble member by ONE step
-            state_pert = TST.run_model(state_pert, model, model_parameters)
+#             # Advance the absolute state of the ensemble member by ONE step
+#             state_pert = TST.run_model(state_pert, model, model_parameters)
 
-            # Store the absolute state for the next loop iteration
-            X_next[:, member] = state_pert[0].squeeze()
+#             # Store the absolute state for the next loop iteration
+#             X_next[:, member] = state_pert[0].squeeze()
 
-            # Measure deviation relative to the newly evolved control run
-            Xi[:, member] = state_pert[0].squeeze() - control_state[0].squeeze()
-            Chi[:, member] = state_pert[1].squeeze() - control_state[1].squeeze()
+#             # Measure deviation relative to the newly evolved control run
+#             Xi[:, member] = state_pert[0].squeeze() - control_state[0].squeeze()
+#             Chi[:, member] = state_pert[1].squeeze() - control_state[1].squeeze()
             
-        # Save explicit copies of the perturbation matrices for this timestep
-        Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
+#         # Save explicit copies of the perturbation matrices for this timestep
+#         Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
         
-        # Shift the time window forward using absolute physical states
-        X_past = X.clone()  # The old current state becomes the new past state
-        X = X_next.clone()  # The newly generated absolute state becomes the current state
+#         # Shift the time window forward using absolute physical states
+#         X_past = X.clone()  # The old current state becomes the new past state
+#         X = X_next.clone()  # The newly generated absolute state becomes the current state
 
         
-        for member in range(ensemble_size):
-            state_pert = [X[:, member], X_past[:, member]]
+#         for member in range(ensemble_size):
+#             state_pert = [X[:, member], X_past[:, member]]
 
-            # Advance the absolute state
-            state_pert = TST.run_model(state_pert, model, model_parameters)
-            # state_pert = TST.run_model(state_pert, model, model_parameters)
+#             # Advance the absolute state
+#             state_pert = TST.run_model(state_pert, model, model_parameters)
+#             # state_pert = TST.run_model(state_pert, model, model_parameters)
 
-            # Store the absolute state for the next iteration
-            X_next[:, member] = state_pert[0]
+#             # Store the absolute state for the next iteration
+#             X_next[:, member] = state_pert[0]
             
-            # Measure deviation relative to control for saving
-            Xi[:, member] = state_pert[0].squeeze() - control_state[0].squeeze()
-            Chi[:, member] = state_pert[1].squeeze() - control_state[1].squeeze()
+#             # Measure deviation relative to control for saving
+#             Xi[:, member] = state_pert[0].squeeze() - control_state[0].squeeze()
+#             Chi[:, member] = state_pert[1].squeeze() - control_state[1].squeeze()
             
-        # Save explicit copies of the matrices for this timestep
-        Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
+#         # Save explicit copies of the matrices for this timestep
+#         Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
         
-        # FIX: Correctly advance the absolute states
-        # X_past = X_past_next
-        # X = X_next
-        Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
+#         # FIX: Correctly advance the absolute states
+#         # X_past = X_past_next
+#         # X = X_next
+#         # Ensembles.append([Chi.clone(), Xi.clone(), X.clone()])
         
-        # FIX: Correctly advance the absolute states using clones
-        X_past = X.clone()       # The old current absolute state becomes the past absolute state
-        X = X_next.clone()
+#         # FIX: Correctly advance the absolute states using clones
+#         X_past = X.clone()       # The old current absolute state becomes the past absolute state
+#         X = X_next.clone()
 
-    return Ensembles, test_values
+#     return Ensembles, test_values
