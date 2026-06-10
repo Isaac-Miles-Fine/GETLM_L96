@@ -86,8 +86,8 @@ def IETLM_generator(Chi, Xi, stencil_members_large, model_parameters, ensemble_s
     (N, dx, dt, alpha, beta, F_L96) = model_parameters 
     
     # We now form the empty shells that will form the structure of the IETLM
-    N_tilde = torch.zeros(1,N)
-    L_tilde = torch.zeros(1,N)
+    N_tilde = torch.zeros(N,N)
+    L_tilde = torch.zeros(N,N)
 
     # We also unpack the stencil members that we want to use for the IETLM
     future_members = stencil_members_large[0]

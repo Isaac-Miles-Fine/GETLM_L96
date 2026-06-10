@@ -48,7 +48,7 @@ def put_in_place_row(x_i, N, x_tilde, grid_index, stencil_members):
     for i in range(len(stencil_members)):
         local = grid_index + stencil_members[i]
         # print(i, local)
-        x_tilde[grid_index, local % N] = x_i[i]
+        x_tilde[grid_index, local % N] = x_i[0,i]
 
     return x_tilde
 
@@ -76,7 +76,8 @@ def LETLM_generator(Chi, Xi, stencil_members_large, model_parameters, ensemble_s
         
         # We now calculate the little ensemble
         M_i = little_LETLM(Chi_i, Xi_i)
-        M_tilde = put_in_place_row(M_i, N, M_tilde, grid_index, future_members)
+        # print(M_i.shape)
+        M_tilde = put_in_place_row(M_i, N, M_tilde, grid_index, current_members)
 
 
 
