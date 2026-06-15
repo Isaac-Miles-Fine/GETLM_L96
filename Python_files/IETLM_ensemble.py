@@ -29,34 +29,34 @@ def stencil_selector(grid_index, Ensemble, N, ensemble_size,stencil_members):
     return subset
 
 
-# def little_IETLM(Chi_i, Xi_i):
-#     # Construct matrix
-#     Pi_half = torch.cat((Chi_i,-Xi_i), dim=0)
-#     Pi = Pi_half @ Pi_half.T
-#     # print(Pi)
-
-#     # print(Pi_half.shape)
-
-#     # We now need to find the zero-eigenvalue eigenvectors
-#     zero_eigenvalue_eigenvecs, eigenvalues = eigen_finder_kth(Pi,1)
-#     return zero_eigenvalue_eigenvecs, eigenvalues
-
-def little_IETLM(Xi_i, X_i):
+def little_IETLM(Chi_i, Xi_i):
     # Construct matrix
-    # (1)
-    Pi_half = torch.cat((Xi_i, -X_i), dim=0)
+    Pi_half = torch.cat((Chi_i,-Xi_i), dim=0)
     Pi = Pi_half @ Pi_half.T
+    # print(Pi)
+
     # print(Pi_half.shape)
 
-    # (2)
-    # Compute smallest eigenpair
-    eigenvals, eigenvecs = torch.lobpcg(Pi, k=1, largest=False)
+    # We now need to find the zero-eigenvalue eigenvectors
+    zero_eigenvalue_eigenvecs, eigenvalues = eigen_finder_kth(Pi,1)
+    return zero_eigenvalue_eigenvecs, eigenvalues
 
-    # Smallest eigenvector (shape: [18])
-    v = eigenvecs[:, 0]
+# def little_IETLM(Xi_i, X_i):
+#     # Construct matrix
+#     # (1)
+#     Pi_half = torch.cat((Xi_i, -X_i), dim=0)
+#     Pi = Pi_half @ Pi_half.T
+#     # print(Pi_half.shape)
+
+#     # (2)
+#     # Compute smallest eigenpair
+#     eigenvals, eigenvecs = torch.lobpcg(Pi, k=1, largest=False)
+
+#     # Smallest eigenvector (shape: [18])
+#     v = eigenvecs[:, 0]
 
 
-    return v, eigenvals
+#     return v, eigenvals
 
 
 # This function finds the kth smallest eigenvalue-eigenvectors
