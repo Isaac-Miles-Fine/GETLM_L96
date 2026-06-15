@@ -24,22 +24,40 @@ def stencil_selector(grid_index, Ensemble, N, ensemble_size,stencil_members):
     for ii in range(len(stencil_members)):
         j = grid_index + stencil_members[ii]
         # print(j)
-        subset[(ii%N),:] = Ensemble[(j%N),:]
+        subset[ii, :] = Ensemble[(j%N),:]
         
     return subset
 
 
-def little_IETLM(Chi_i, Xi_i):
-    # Construct matrix
-    Pi_half = torch.cat((Chi_i,-Xi_i), dim=0)
-    Pi = Pi_half @ Pi_half.T
-    # print(Pi)
+# def little_IETLM(Chi_i, Xi_i):
+#     # Construct matrix
+#     Pi_half = torch.cat((Chi_i,-Xi_i), dim=0)
+#     Pi = Pi_half @ Pi_half.T
+#     # print(Pi)
 
+#     # print(Pi_half.shape)
+
+#     # We now need to find the zero-eigenvalue eigenvectors
+#     zero_eigenvalue_eigenvecs, eigenvalues = eigen_finder_kth(Pi,1)
+#     return zero_eigenvalue_eigenvecs, eigenvalues
+
+def little_IETLM(Xi_i, X_i):
+    # Construct matrix
+    # (1)
+    Pi_half = torch.cat((Xi_i, -X_i), dim=0)
+    Pi = Pi_half @ Pi_half.T
     # print(Pi_half.shape)
 
-    # We now need to find the zero-eigenvalue eigenvectors
-    zero_eigenvalue_eigenvecs, eigenvalues = eigen_finder_kth(Pi,1)
-    return zero_eigenvalue_eigenvecs, eigenvalues
+    # (2)
+    # Compute smallest eigenpair
+    eigenvals, eigenvecs = torch.lobpcg(Pi, k=1, largest=False)
+
+    # Smallest eigenvector (shape: [18])
+    v = eigenvecs[:, 0]
+
+
+    return v, eigenvals
+
 
 # This function finds the kth smallest eigenvalue-eigenvectors
 def eigen_finder_kth(Pi, k):
@@ -105,8 +123,8 @@ def IETLM_generator(Chi, Xi, stencil_members_large, model_parameters, ensemble_s
         zeros, eigenvalues = little_IETLM(Chi_i, Xi_i)
 
         # print(zeros.shape)
-        zeros = torch.transpose(zeros, 0, 1)
-        zero_eigenvalue_eigenvector = zeros[0]
+        # zeros = torch.transpose(zeros, 0, 1)
+        zero_eigenvalue_eigenvector = zeros#[0]
         # print(zero_eigenvalue_eigenvector)
         # We now need to split the eigenvectors in the components for n, l and k
         n_i, l_i = member_splitter(zero_eigenvalue_eigenvector, stencil_members_large)

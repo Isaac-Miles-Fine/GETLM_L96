@@ -420,9 +420,10 @@ def GETLM_ensemble_generator_mult(x_state, ensemble_size, standard_deviation, mo
 
     # now that we have our unperturbed run we can subtract it from our test run and our perturbed run
     # We will start with the test run
-    test_final = []
+    test_final_pert = []
+
     for i in range(len(test_guess)):
-        test_final.append(test_guess[i] - unpert_run[i])
+        test_final_pert.append(test_guess[i] - unpert_run[i])
 
     # print('7')
 
@@ -436,6 +437,6 @@ def GETLM_ensemble_generator_mult(x_state, ensemble_size, standard_deviation, mo
 
 
 
-    return test_final, Ensemble_final, Ensembles
+    return test_final_pert, Ensemble_final, Ensembles, test_guess
 
 
