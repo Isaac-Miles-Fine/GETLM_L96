@@ -134,7 +134,7 @@ def rk4_L96(x_in, model_parameters):
 # -------------------------------------------------------------------------
 # Crank-Nicolson Solver (Fixed to return 1D arrays matching RK4/LF)
 # -------------------------------------------------------------------------
-def CN_L96(x_in, model_parameters, iter_count=5, tol=1e-6):
+def CN_L96(x_in, model_parameters, iter_count=5, tol=1e-14):
     (N, dx, dt, alpha, beta, F_96) = model_parameters 
     x_current = x_in[0].flatten()
     x_past = x_in[1].flatten()
