@@ -440,3 +440,225 @@ def GETLM_ensemble_generator_mult(x_state, ensemble_size, standard_deviation, mo
     return test_final_pert, Ensemble_final, Ensembles, test_guess, unpert_run
 
 
+def GETLM_ensemble_generator_mult(x_state, ensemble_size, standard_deviation, model, model_parameters, test_pert, number_of_steps = 1):
+
+    (N, dx, dt, alpha, beta, F_L96) = model_parameters
+    x_current = x_state[0]
+    x_past = x_state[1]
+    # print('0')
+
+    # We first define our test perturbation
+    test_guess = []
+    state_test_pert_current = x_current + test_pert[0]
+    state_test_pert = (state_test_pert_current, x_past+test_pert[1])
+    # print('1')
+
+    test_guess.append(state_test_pert[1])
+    test_guess.append(state_test_pert[0])
+
+    for i in range(number_of_steps):
+        state_test_pert = TST.run_model(state_test_pert, model, model_parameters)
+        test_guess.append(state_test_pert[0])
+        # print(len(test_guess)) # This should be number of steps + 2
+    # print('2')
+    # Now that we have defined our test perturbation we can run our perturbed ensemble members
+    Ensembles = []
+    # We first make copies of our original state vectors
+    ensemble_unpert_current = x_current.repeat(1, ensemble_size)
+    ensemble_unpert_past = x_past.repeat(1, ensemble_size)
+
+
+
+    # print('3')
+    # we now need to add random normal noise to the unperturbed ensembles
+    ensemble_unpert_current = ensemble_unpert_current + torch.randn(N, ensemble_size) * standard_deviation
+    ensemble_unpert_past = ensemble_unpert_past + torch.randn(N, ensemble_size) * standard_deviation
+
+
+    Ensembles.append(ensemble_unpert_past)
+    Ensembles.append(ensemble_unpert_current)
+
+    # print('4')
+
+    for i in range(number_of_steps):
+        Chi = torch.zeros((N, ensemble_size))
+        Xi = Ensembles[-1]
+        X = Ensembles[-2]
+        for j in range(ensemble_size):
+            # Xij = Xi[:, j:j+1] # Keeps shape (2N, 1)
+            # Chi_j= TST.run_model((Xi,Xij), model, model_parameters)
+            Xij = Xi[:, j:j+1] 
+            Xj = X[:, j:j+1] # Slice the past state too
+            Chi_j = TST.run_model((Xij, Xj), model, model_parameters) # <--- Pass the slices
+            
+            # FIX: Use slice assignment to keep the destination 2D as well
+            Chi[:, j:j+1] = Chi_j[0].unsqueeze(1)
+            
+        Ensembles.append(Chi)
+    # print('5')
+
+    # for i in range(number_of_steps):
+    #     Chi = torch.zeros((2*N,ensemble_size))
+    #     Xi = Ensembles[-1]
+    #     for j in range(ensemble_size):
+    #         # Xj = X[:,j]
+    #         # Xij = Xi[:,j]
+    #         Xij = Xi[:, j:j+1]
+    #         Chi_j, _ = model(Xij, model_parameters, switch_values)
+    #         Chi[:,j] = Chi_j
+    #     Ensembles.append(Chi)
+
+    # Now we have the ensembles of perturbed runs, but we now need to remove the non-linear term
+# To do this we start by doing a controlled run
+    unpert_run = []
+    unpert_run.append(x_past)
+    unpert_run.append(x_current)
+    for i in range(number_of_steps):
+        # print('5',i)
+        # print(unpert_run[-2].shape)
+        in_run_current = unpert_run[-1]
+        in_run_past = unpert_run[-2]
+        in_run = (in_run_current, in_run_past)
+
+        out_run = TST.run_model(in_run, model, model_parameters)
+        unpert_run.append(out_run[0])
+
+    # print('6')
+    
+    
+
+    # now that we have our unperturbed run we can subtract it from our test run and our perturbed run
+    # We will start with the test run
+    test_final_pert = []
+
+    for i in range(len(test_guess)):
+        test_final_pert.append(test_guess[i] - unpert_run[i])
+
+    # print('7')
+
+    # We will now repeat this for the perturbed runs
+    Ensemble_final = []
+    for i in range(len(Ensembles)):
+        unpert_matrix = (unpert_run[i]).repeat(1, ensemble_size)
+        # print(unpert_matrix.shape)
+        # print((Ensembles[i] - unpert_matrix).shape)
+        Ensemble_final.append(Ensembles[i] - unpert_matrix)
+
+
+
+    return test_final_pert, Ensemble_final, Ensembles, test_guess, unpert_run
+
+
+def GETLM_ensemble_generator_mult_LF(x_state, ensemble_size, standard_deviation, model, model_parameters, test_pert, number_of_steps = 1):
+
+    (N, dx, dt, alpha, beta, F_L96) = model_parameters
+    x_current = x_state[0]
+    x_past = x_state[1]
+    # print('0')
+
+    # We first define our test perturbation
+    test_guess = []
+    state_test_pert_current = x_current + test_pert[0]
+    state_test_pert = (state_test_pert_current, x_past+test_pert[1])
+    # print('1')
+
+    test_guess.append(state_test_pert[1])
+    test_guess.append(state_test_pert[0])
+
+    for i in range(number_of_steps):
+        state_test_pert = TST.run_model(state_test_pert, model, model_parameters)
+        test_guess[-1] = state_test_pert[1]
+        test_guess.append(state_test_pert[0])
+        # print(len(test_guess)) # This should be number of steps + 2
+    # print('2')
+    # Now that we have defined our test perturbation we can run our perturbed ensemble members
+    Ensembles = []
+    # We first make copies of our original state vectors
+    ensemble_unpert_current = x_current.repeat(1, ensemble_size)
+    ensemble_unpert_past = x_past.repeat(1, ensemble_size)
+
+
+
+    # print('3')
+    # we now need to add random normal noise to the unperturbed ensembles
+    ensemble_unpert_current = ensemble_unpert_current + torch.randn(N, ensemble_size) * standard_deviation
+    ensemble_unpert_past = ensemble_unpert_past + torch.randn(N, ensemble_size) * standard_deviation
+
+
+    Ensembles.append(ensemble_unpert_past)
+    Ensembles.append(ensemble_unpert_current)
+
+    # print('4')
+
+    for i in range(number_of_steps):
+        Chi = torch.zeros((N, ensemble_size))
+        Xi_temp = torch.zeros((N, ensemble_size))
+
+        Xi = Ensembles[-1]
+        X = Ensembles[-2]
+        for j in range(ensemble_size):
+            # Xij = Xi[:, j:j+1] # Keeps shape (2N, 1)
+            # Chi_j= TST.run_model((Xi,Xij), model, model_parameters)
+            Xij = Xi[:, j:j+1] 
+            Xj = X[:, j:j+1] # Slice the past state too
+            Chi_j = TST.run_model((Xij, Xj), model, model_parameters) # <--- Pass the slices
+            
+            # FIX: Use slice assignment to keep the destination 2D as well
+            Chi[:, j:j+1] = Chi_j[0].unsqueeze(1)
+            Xi_temp[:,j:j+1] = Chi_j[1].unsqueeze(1)
+            
+        Ensembles[-1] = Xi_temp
+        Ensembles.append(Chi)
+    # print('5')
+
+    # for i in range(number_of_steps):
+    #     Chi = torch.zeros((2*N,ensemble_size))
+    #     Xi = Ensembles[-1]
+    #     for j in range(ensemble_size):
+    #         # Xj = X[:,j]
+    #         # Xij = Xi[:,j]
+    #         Xij = Xi[:, j:j+1]
+    #         Chi_j, _ = model(Xij, model_parameters, switch_values)
+    #         Chi[:,j] = Chi_j
+    #     Ensembles.append(Chi)
+
+    # Now we have the ensembles of perturbed runs, but we now need to remove the non-linear term
+# To do this we start by doing a controlled run
+    unpert_run = []
+    unpert_run.append(x_past)
+    unpert_run.append(x_current)
+    for i in range(number_of_steps):
+        # print('5',i)
+        # print(unpert_run[-2].shape)
+        in_run_current = unpert_run[-1]
+        in_run_past = unpert_run[-2]
+        in_run = (in_run_current, in_run_past)
+
+        out_run = TST.run_model(in_run, model, model_parameters)
+        unpert_run[-1] = out_run[1]
+        unpert_run.append(out_run[0])
+
+    # print('6')
+    
+    
+
+    # now that we have our unperturbed run we can subtract it from our test run and our perturbed run
+    # We will start with the test run
+    test_final_pert = []
+
+    for i in range(len(test_guess)):
+        test_final_pert.append(test_guess[i] - unpert_run[i])
+
+    # print('7')
+
+    # We will now repeat this for the perturbed runs
+    Ensemble_final = []
+    for i in range(len(Ensembles)):
+        unpert_matrix = (unpert_run[i]).repeat(1, ensemble_size)
+        # print(unpert_matrix.shape)
+        # print((Ensembles[i] - unpert_matrix).shape)
+        Ensemble_final.append(Ensembles[i] - unpert_matrix)
+
+
+
+    return test_final_pert, Ensemble_final, Ensembles, test_guess, unpert_run

@@ -84,4 +84,4 @@ def LETLM_generator(Chi, Xi, stencil_members_large, model_parameters, ensemble_s
         
 
     
-    return  M_tilde,
+    return  M_tilde

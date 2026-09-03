@@ -175,8 +175,9 @@ def LF_L96(x_in, model_parameters):
     trend = rhs_L96(x_current, model_parameters)
     X_next = x_past + dt * trend * 2
     X_current = robert_asselin_filter(x_past, x_current, X_next, gamma=0.1)
+    # X_current = x_in
     
-    return [X_next, X_current]
+    return [X_next, X_current[0]]
 
 # -------------------------------------------------------------------------
 # Master Run Model Wrapper
@@ -193,3 +194,55 @@ def run_model(x_in, model, model_parameters):
         
     # print(x_next)
     return x_next
+
+
+
+# def run_model(x_in, model, model_parameters):
+#     # 1. Recursive flattening: Extract the two most recent states 
+#     # Regardless of how deeply nested the list is.
+#     def flatten_state(state):
+#         if isinstance(state, list):
+#             # If it's a list, the first element is always the 'newest'
+#             return flatten_state(state[0])
+#         return torch.as_tensor(state).view(-1)
+
+#     # 2. Get x_current and x_past
+#     x_curr = flatten_state(x_in[0])
+    
+#     # Handle the 'False' initialization case
+#     if isinstance(x_in[1], bool) and x_in[1] is False:
+#         x_past = None 
+#     else:
+#         x_past = flatten_state(x_in[1])
+
+#     # 3. Model Execution
+#     if model == LF_L96 and x_past is None:
+#         # Spin-up: RK4 requires [current, past_dummy]
+#         # Your rk4_L96 returns [new, old]
+#         return rk4_L96([x_curr, x_curr], model_parameters) 
+    
+#     elif model == LF_L96:
+#         return LF_L96([x_curr, x_past], model_parameters)
+        
+#     else:
+#         # Other models (CN/RK4) only need the current state
+#         return model([x_curr, x_past], model_parameters)
+
+# -------------------------------------------------------------------------
+# Adams-Bashforth (2nd Order) Solver
+# -------------------------------------------------------------------------
+def AB2_L96(x_in, model_parameters):
+    (N, dx, dt, alpha, beta, F_L96) = model_parameters 
+    
+    # Force 1D arrays matching your other solvers
+    x_current = x_in[0].view(-1)
+    x_past = x_in[1].view(-1)
+    
+    # Calculate the trends for current and previous time steps
+    trend_current = rhs_L96(x_current, model_parameters)
+    trend_past = rhs_L96(x_past, model_parameters)
+    
+    # 2nd-order Adams-Bashforth integration
+    x_next = x_current + (dt / 2.0) * (3.0 * trend_current - trend_past)
+    
+    return [x_next, x_current]
