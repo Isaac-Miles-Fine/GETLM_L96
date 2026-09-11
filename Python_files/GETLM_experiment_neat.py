@@ -89,8 +89,6 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
 
     x_values = np.arange(1, N + 1)
 
-    IETLM_norm = []
-    GETLM_norm = []
 
 
     IETLM_TT_result = []
@@ -116,10 +114,10 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
     GETLM_test_future_4 = test_0
 
 
-    GETLM_test_current_1 = test_final_pert[1+starting_time]
-    GETLM_test_current_2 = test_final_pert[1+starting_time]
-    GETLM_test_current_3 = test_final_pert[1+starting_time]
-    GETLM_test_current_4 = test_final_pert[1+starting_time]
+    GETLM_test_current_1 = test_final_pert[starting_time]
+    GETLM_test_current_2 = test_final_pert[starting_time]
+    GETLM_test_current_3 = test_final_pert[starting_time]
+    GETLM_test_current_4 = test_final_pert[starting_time]
 
     # getlm_norm = L2_norm(GETLM_test_future, test_0)
 
