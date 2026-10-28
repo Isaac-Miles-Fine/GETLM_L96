@@ -195,13 +195,22 @@ def GETLM_ensemble_generator(x_current, x_past, ensemble_size, standard_deviatio
     # The first step is to perturb the inputed run
     # We start by making 'ensemble size' copies of the input vector
     x_current_matrix = x_current.repeat(N, ensemble_size)
+    x_current_matrix = x_current.reshape(N, 1).repeat(1, ensemble_size)
     x_past_matrix = x_past.repeat(N, ensemble_size)
+    x_past_matrix = x_past.reshape(N, 1).repeat(1, ensemble_size)
     # print(x_current_matrix.shape)
     # print(x_past_matrix.shape)
 
 
 
-    
+    # print("N:", N)
+    # print("ensemble_size:", ensemble_size)
+    # print("x_current shape:", x_current.shape)
+    # print("x_current_matrix shape:", x_current_matrix.shape)
+    # print("x_past shape:", x_past.shape)
+    # print("standard_deviation:", standard_deviation)
+
+
     # We are now going to add random normal noise to this matrix to give us our original function 
     X = x_current_matrix + torch.randn(N, ensemble_size) * standard_deviation
     Xi = torch.zeros(N, ensemble_size)

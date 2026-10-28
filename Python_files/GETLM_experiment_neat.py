@@ -17,16 +17,22 @@ from Python_files import GETLM as GETLMC
 torch.set_default_dtype(torch.float64)
 
 
-def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, num_steps, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = False, spin_up_time = 1000):
+def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, num_steps, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = False, spin_up_time = 1000, x_alt = False):
     (N, dx, dt, alpha, beta, F_L96) = model_parameters 
+    
 
-    # we start by initialising the model with a vector of random normal noise
-    x_in = torch.randn(N,1)
-    # We then run the model so that the Lorenz 96 model has reached it's 'equilibrium'
-    for i in range(spin_up_time-1):
-        x_in = TST.run_model(x_in, model, model_parameters)
+    if x_alt == False:
+        # we start by initialising the model with a vector of random normal noise
+        x_in = torch.randn(N,1)
+        # We then run the model so that the Lorenz 96 model has reached it's 'equilibrium'
+        for i in range(spin_up_time-1):
+            x_in = TST.run_model(x_in, model, model_parameters)
+            # print(x_in[0].size())
 
-    x_out = TST.run_model(x_in, model, model_parameters)
+        x_out = TST.run_model(x_in, model, model_parameters)
+    else:
+        x_out = x_alt
+        # print('test work!')
 
 
     # We also need to define our test perturbation
@@ -34,10 +40,25 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
     Test_pert_past = torch.randn(N) * perturbation_size
     Test_pert = (Test_pert_current, Test_pert_past)
 
+    print("perturbation_size", perturbation_size, "| dt", dt, "| F", F_L96,
+      "| |Test_pert|", torch.linalg.norm(Test_pert[0]).item())
+
 
     test_final_pert, Ensemble_final, Ensembles, test_guess, unpert_run=  GETLMC.GETLM_ensemble_generator_mult(x_out, ensemble_size, perturbation_size, model, model_parameters, Test_pert, number_of_steps = num_steps)
 
+    unp = [x_out[0].clone(), x_out[1].clone()]
+    tst = [x_out[0] + Test_pert[0], x_out[1] + Test_pert[1]]
+    for k in range(1, 6):
+        unp = TST.run_model(unp, model, model_parameters)
+        tst = TST.run_model(tst, model, model_parameters)
+        print("A", k,
+            "pert:", torch.linalg.norm(tst[0] - unp[0]).item(),
+            "| unpert_run mismatch:", torch.linalg.norm(unp[0].reshape(-1) - unpert_run[k+1].reshape(-1)).item(),
+            "| shapes:", tuple(unp[0].shape), tuple(unpert_run[k+1].shape))
 
+    # Path B: what the generator produced
+    for k in range(1, 7):
+        print("B", k, torch.linalg.norm(test_guess[k] - unpert_run[k]).item())
     # Now that we have our ensembles generated we need to generate the LETLM, IETLM and GETLM for each time step
     GETLMS_1= []
     GETLMS_2= []
@@ -141,7 +162,6 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
 
 
 
-
     IETLM_TT_result.append(IETLM_TT)
     LETLM_TT_result.append(LETLM_TT)
 
@@ -230,6 +250,45 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
         NK = torch.pinverse(GETLMS_4[i+starting_time][0]) @ GETLMS_4[i+starting_time][2]
         GETLM_test_future_4 = NL @ GETLM_test_current_4 + NK @ GETLM_test_past_4
 
+        x_axis = np.arange(1,N+1)
+        Acutal = test_guess[index] - unpert_run[index]
+
+        # if pert_plots == False:
+        #     print('Helo')
+        #     oifhihsdfkjdskfas = 2
+        # else:
+        #     print('world')
+        plt.figure(figsize=(14, 5))
+        plt.plot(x_axis,  Acutal, label = 'Actual', marker = '*')
+        plt.plot(x_axis,  test_final_pert[index], label = 'Actual (alt)', marker = 'd')
+        # plt.plot(x_axis, GETLM_test_future_1 , label = 'GETLM (1)')
+        # plt.plot(x_axis, GETLM_test_future_2 , label = 'GETLM (2)')
+        # plt.plot(x_axis, GETLM_test_future_3 , label = 'GETLM (3)')
+        # plt.plot(x_axis, GETLM_test_future_4 , label = 'GETLM (4)')
+        
+        # plt.plot(x_axis, LETLM_test , label = 'LETLM')
+        # plt.plot(x_axis, IETLM_test , label = 'IETLM')
+
+        # Add 10% padding around Actual
+        y_min = torch.min(Acutal).item()
+        y_max = torch.max(Acutal).item()
+        padding = 0.1 * (y_max - y_min)
+
+        plt.ylim(y_min - padding, y_max + padding)
+
+        plt.title(f"Perturbations after {i+1} steps")
+        plt.legend()
+        plt.show()
+        plt.clf()
+        #     print("LETLM TLM test result: ", letlm_tt)
+        #     print("GETLM(2) TLM test result: ", getlm_tt_2)
+        
+
+
+
+
+
+
         getlm_tt_1 = TT.TLM_test(test_guess[index], unpert_run[index], GETLM_test_future_1)
         getlm_tt_2 = TT.TLM_test(test_guess[index], unpert_run[index], GETLM_test_future_2)
         getlm_tt_3 = TT.TLM_test(test_guess[index], unpert_run[index], GETLM_test_future_3)
@@ -302,7 +361,7 @@ def GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, 
 
 
 # now that we have a neat experiment set up, we can do it again, but with multiple trials
-def GETLM_experiment_trials(model, model_parameters, perturbation_size, ensemble_size, num_step, num_trials, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = False, spin_up_time = 1000):
+def GETLM_experiment_trials(model, model_parameters, perturbation_size, ensemble_size, num_step, num_trials, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = False, spin_up_time = 1000, x_alt = False):
     LETLM_TT_result_large = torch.zeros((num_trials, num_step))
     # print(LETLM_TT_result_large.shape)
     IETLM_TT_result_large = torch.zeros((num_trials, num_step))
@@ -310,9 +369,11 @@ def GETLM_experiment_trials(model, model_parameters, perturbation_size, ensemble
     GETLM_2_TT_result_large =  torch.zeros((num_trials, num_step))
     GETLM_3_TT_result_large =  torch.zeros((num_trials, num_step))
     GETLM_4_TT_result_large =  torch.zeros((num_trials, num_step))
-
     for i in tqdm(range(num_trials)):
-        LETLM_TT_result, IETLM_TT_result, GETLM_1_TT_result, GETLM_2_TT_result, GETLM_3_TT_result, GETLM_4_TT_result = GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, num_step, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = plotted, spin_up_time = spin_up_time)
+        LETLM_TT_result, IETLM_TT_result, GETLM_1_TT_result, GETLM_2_TT_result, GETLM_3_TT_result, GETLM_4_TT_result = GETLM_experiment(model, model_parameters, perturbation_size, ensemble_size, num_step, LETLM_stencil, IETLM_stencil, GETLM_stencil, plotted = plotted, spin_up_time = spin_up_time, x_alt=x_alt)
+        
+        
+        
         LETLM_TT_result_large[i,:] = torch.tensor(LETLM_TT_result)
         IETLM_TT_result_large[i,:] = torch.tensor(IETLM_TT_result)
         GETLM_1_TT_result_large[i,:] = torch.tensor(GETLM_1_TT_result)

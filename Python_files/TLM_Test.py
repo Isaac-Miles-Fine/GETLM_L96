@@ -18,4 +18,16 @@ def TLM_test(test_guess, unpert_run, TLM_pert):
     TLM_test_result = torch.sqrt((alpha.T @ alpha)/(beta.T @ beta))
 
     TLM_test_result = (alpha.T @ alpha)/(beta.T @ beta)
+    alpha = test_guess - unpert_run - TLM_pert
+    beta = test_guess - unpert_run
+
+    # print("alpha norm squared:", alpha @ alpha)
+    # print("beta norm squared:", beta @ beta)
+    # print("alpha min/max:", alpha.min().item(), alpha.max().item())
+    # print("beta min/max:", beta.min().item(), beta.max().item())
+
+    # score = (alpha @ alpha) / (beta @ beta)
+    # print("TLM score:", score.item())
+
+
     return TLM_test_result
